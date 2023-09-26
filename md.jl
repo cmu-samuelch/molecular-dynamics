@@ -2,6 +2,8 @@
 # hopefully, this will hold true and I won't have to go back and insert these
 # everywhere.
 
+# TODO: fix the output generator so i can get a gif of my particles moving around
+
 using Plots, Printf, LinearAlgebra
 
 # Reads the contents of the file into a N-by-3 array of positions.
@@ -45,7 +47,7 @@ function force_between_particles(r1, r2)
     r = r1 - r2
     r_len = norm(r)
     force = 48*r_len^-13 - 24*r_len^-7
-    return force / r_len .* r
+    return force / r_len * r
 end
 
 function LJ_potential(r1, r2)
@@ -64,7 +66,6 @@ function LJ_forces_and_energy(rs, N)
     U = 0
     for i = 1:N           # for each particle
         for j = i+1:N     # for each particle that i interacts with
-            # collects forces
             F = force_between_particles(rs[i,:], rs[j,:])
             Fs[i,:] = Fs[i,:] + F
             Fs[j,:] = Fs[j,:] - F
@@ -87,23 +88,6 @@ end
 function calculate_kinetic(vs)
     return sum(vs.^2) / 2
 end
-    
-# # Does one iteration of Velocity Verlet.
-# #
-# # parameter - rs
-# # parameter - 
-# function verlet(rs, N, timestep)
-#     force, U = LJ_forces(rs, N)
-#     vs = update_v(vs, force, timestep)
-#     rs = update_r(rs, vs, timestep)
-#     force, U = LJ_forces(rs, N)
-#     vs = update_v(vs, force, timestep)
-
-#     K = calculate_kinetic(v)
-
-
-#     return
-# end
 
 # Simulates molecules.
 # 
@@ -112,10 +96,7 @@ end
 # output - (to file): positions at end of sim.
 # returns: table with columns containing timesteps, K, U, and p-components.
 function simulate(rs, vs, N, timestep, duration)
-    Ks = zeros(duration, 1)
-    Us = zeros(duration, 1)
-    ts = zeros(duration, 1)
-    ps = zeros(duration, 3)
+    output = zeros(duration, 6)
 
     Fs, _ = LJ_forces_and_energy(rs, N);
     for i = 1:duration
@@ -126,10 +107,8 @@ function simulate(rs, vs, N, timestep, duration)
         Fs, U = LJ_forces_and_energy(rs, N);
         vs = update_v(vs, Fs, timestep)
         
-        ts[i] = i*timestep
-        Ks[i] = calculate_kinetic(vs)
-        Us[i] = U
-        ps[i,:] = [sum(vs[:,1]) sum(vs[:,2]) sum(vs[:,3])]
+        t = i*timestep; K = calculate_kinetic(vs)
+        output[i,:] = [t K U sum(vs[:,1]) sum(vs[:,2]) sum(vs[:,3])]
         
         # println(ps[i,2:4])
         # if (i + 5) % 10 == 0
@@ -137,40 +116,24 @@ function simulate(rs, vs, N, timestep, duration)
         #     write_outfile(out_path, rs)
         # end
     end
-    # p = plot(ts, [H Us Ks], label=["H" "U" "K"])
-    # xlabel!("time")
-    # ylabel!("energies")
-    # display(p)
-    
+
     out_path = @sprintf("dump%i_final.xyz", duration)
     write_outfile(out_path, rs)
 
-    return [ts Ks Us ps]
+    return output
 end
 
 
 function main()
-    rs = read_infile("10.txt")
+    rs = read_infile("pset-2/10.txt")
     vs = zeros(size(rs))
     N = size(rs)[1]
-    simulate(rs, vs, N, 0.002, 1000)
+    data = simulate(rs, vs, N, 0.002, 1000)
+
+    # momentum plot
+    plot(data[:,1], data[:,4:6], label=["p_x" "p_y" "p_z"], title="momentums for system are conserved (at zero)");
+    # Hamiltonian plot
+    plot(data[:,1], [data[:,2:3] data[:,2]+data[:,3]], label=["K" "U" "H"], title="Hamiltonian is conserved for this system");
 end
 
 main()
-
-# NOTES
-# need N-by-3 arrays to store positions, velocities, forces
-
-# please do not create N-by-N arrays (don't store all atomic separations/pair forces)
-
-# please comment code :)
-
-# background on mol sim file formats - will be useful later on
-# for simple applications: XYZ is very simple to work with
-# life saving - openBabel, avogadro for converting trajfile formats
-
-
-# OUTLINE:
-# - read 10.txt to initialize the positions
-# - run VV algorithm
-# - run for however many timesteps we need to run
