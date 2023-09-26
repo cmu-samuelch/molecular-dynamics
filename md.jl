@@ -42,12 +42,10 @@ end
 # parameter - r2: [x, y, z] vector for second particle's position
 # returns: vector of the three force components
 function force_between_particles(r1, r2)
-    r = r2 - r1
+    r = r1 - r2
     r_len = norm(r)
-    # println(r_len)
-    force = 4*(12 * r_len^-13 - 6*r_len^-7)
-    # println(force)
-    return -force / r_len .* r
+    force = 48*r_len^-13 - 24*r_len^-7
+    return force / r_len .* r
 end
 
 function LJ_potential(r1, r2)
@@ -58,78 +56,107 @@ end
 # Computes LJ forces using current positions
 #
 # parameter - rs: positions of all particles
-# parameter - particle_ct: number of particles
+# parameter - N: number of particles
 # returns: array of forces on each particle
 # returns: total LJ potential energy of system
-function LJ_forces(rs, particle_ct)
+function LJ_forces_and_energy(rs, N)
     Fs = zeros(size(rs))
     U = 0
-    for i = 1:particle_ct           # for each particle
-        for j = i+1:particle_ct     # for each particle that i interacts with
+    for i = 1:N           # for each particle
+        for j = i+1:N     # for each particle that i interacts with
             # collects forces
-            Fs[i,:] = Fs[i,:] .+ force_between_particles(rs[i,:], rs[j,:])
-            Fs[j,:] = Fs[j,:] .- force_between_particles(rs[i,:], rs[j,:])
+            F = force_between_particles(rs[i,:], rs[j,:])
+            Fs[i,:] = Fs[i,:] + F
+            Fs[j,:] = Fs[j,:] - F
             U = U + LJ_potential(rs[i,:], rs[j,:])
         end
     end
     return Fs, U
 end
 
+function update_v(v, force, dt)
+    v = v + force * dt/2
+    return v
+end
+
+function update_r(rs, vs, dt)
+    rs = rs + vs*dt
+    return rs
+end
+
+function calculate_kinetic(vs)
+    return sum(vs.^2) / 2
+end
+    
+# # Does one iteration of Velocity Verlet.
+# #
+# # parameter - rs
+# # parameter - 
+# function verlet(rs, N, timestep)
+#     force, U = LJ_forces(rs, N)
+#     vs = update_v(vs, force, timestep)
+#     rs = update_r(rs, vs, timestep)
+#     force, U = LJ_forces(rs, N)
+#     vs = update_v(vs, force, timestep)
+
+#     K = calculate_kinetic(v)
+
+
+#     return
+# end
+
 # Simulates molecules.
 # 
 # parameter - timestep: timestep.
 # parameter - duration: timesteps to simulate for.
 # output - (to file): positions at end of sim.
-# plots - several.
-# returns: nothing
-function simulate(timestep, duration)
-    rs = read_infile("10.txt")
-    vs = zeros(size(rs))
-    particle_ct = size(rs)[1]
-    Ks = zeros(2, duration)
-    Us = zeros(2, duration)
-    ps = zeros(4, duration)
-    Ks[1,:] = 1:duration
+# returns: table with columns containing timesteps, K, U, and p-components.
+function simulate(rs, vs, N, timestep, duration)
+    Ks = zeros(duration, 1)
+    Us = zeros(duration, 1)
+    ts = zeros(duration, 1)
+    ps = zeros(duration, 3)
+
+    Fs, _ = LJ_forces_and_energy(rs, N);
     for i = 1:duration
-        t = i * timestep;
-
+        
         # VV forward one timestep
-        Fs, _ = LJ_forces(rs, particle_ct);
-        v_one_half = vs .+ timestep/2 * Fs;
-        new_rs = rs .+ timestep.*v_one_half;
-        Fs, U = LJ_forces(new_rs, particle_ct);
-        new_vs = v_one_half .+ timestep/2 * Fs;
-        rs = new_rs;
-        vs = new_vs;
-
-        Ks[1,i] = t
-        Us[1,i] = t
-        ps[1,i] = t
-        for i = 1:particle_ct
-            Ks[2,i] = Ks[2,i] + norm(vs[i,:])^2/2
-            Us[2,i] = Us[2,i] + U
-            ps[2:4,i] = ps[2:4,i] + vs[i,:]
-        end
-
+        vs = update_v(vs, Fs, timestep)
+        rs = update_r(rs, vs, timestep)
+        Fs, U = LJ_forces_and_energy(rs, N);
+        vs = update_v(vs, Fs, timestep)
+        
+        ts[i] = i*timestep
+        Ks[i] = calculate_kinetic(vs)
+        Us[i] = U
+        ps[i,:] = [sum(vs[:,1]) sum(vs[:,2]) sum(vs[:,3])]
+        
+        # println(ps[i,2:4])
         # if (i + 5) % 10 == 0
         #     out_path = @sprintf("dump%i.xyz", i)
         #     write_outfile(out_path, rs)
         # end
     end
-    p = plot(ps[1,:], Ks[2,:] + Us[2,:])
-    xlabel!("time")
-    ylabel!("H")
-    display(p)
-
+    # p = plot(ts, [H Us Ks], label=["H" "U" "K"])
+    # xlabel!("time")
+    # ylabel!("energies")
+    # display(p)
+    
     out_path = @sprintf("dump%i_final.xyz", duration)
     write_outfile(out_path, rs)
+
+    return [ts Ks Us ps]
 end
 
-simulate(0.002, 1000)
 
+function main()
+    rs = read_infile("10.txt")
+    vs = zeros(size(rs))
+    N = size(rs)[1]
+    simulate(rs, vs, N, 0.002, 1000)
+end
 
-
-
+main()
 
 # NOTES
 # need N-by-3 arrays to store positions, velocities, forces
