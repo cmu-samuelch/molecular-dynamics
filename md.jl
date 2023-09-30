@@ -25,16 +25,34 @@ function read_infile(infile_path)
     return output
     end
 
-# Writes positions to a file.
+# Writes positions in current state to xyz format
 #
-# parameter - outfile_path: path to write to
-function write_outfile(outfile_path, rs)
+# parameter - rs: positions to record
+# parameter - i: frame number
+# returns: string of all positions
+function generate_xyz_frame(rs, i)
     n = size(rs)[1]
-    text = "10\n\n"
+    text = @sprintf("%i\nFrame %i\n", n, i)
     for i = 1:n
-        text = text * @sprintf("a %f %f %f\n", rs[i,1], rs[i,2], rs[i,3])
+        text *= @sprintf("a %f %f %f\n", rs[i,1], rs[i,2], rs[i,3])
     end
-    write(outfile_path, text)
+    return text
+end
+
+# Writes data to a file.
+#
+# parameter - data: matrix of data to store
+# parameter - outfile_path: location to store data
+function write_data(data, outfile_path)
+    (t, cols) = size(data)
+    output = ""
+    for i = 1:t
+        for j = 1:cols
+            output *= @sprintf("%f,", data[i,j])
+        end
+        output *= "\n"
+    end
+    write(outfile_path, output)
 end
 
 # Calculates the force vector exerted on particle 1 from LJ potential with 
@@ -67,21 +85,21 @@ function LJ_forces_and_energy(rs, N)
     for i = 1:N           # for each particle
         for j = i+1:N     # for each particle that i interacts with
             F = force_between_particles(rs[i,:], rs[j,:])
-            Fs[i,:] = Fs[i,:] + F
-            Fs[j,:] = Fs[j,:] - F
-            U = U + LJ_potential(rs[i,:], rs[j,:])
+            Fs[i,:] += F
+            Fs[j,:] -= F
+            U += LJ_potential(rs[i,:], rs[j,:])
         end
     end
     return Fs, U
 end
 
 function update_v(v, force, dt)
-    v = v + force * dt/2
+    v += force * dt/2
     return v
 end
 
 function update_r(rs, vs, dt)
-    rs = rs + vs*dt
+    rs += vs*dt
     return rs
 end
 
@@ -91,12 +109,16 @@ end
 
 # Simulates molecules.
 # 
+# parameter - rs: starting positions
+# parameter - vs: starting velocities
+# parameter - N: number of particles
 # parameter - timestep: timestep.
 # parameter - duration: timesteps to simulate for.
-# output - (to file): positions at end of sim.
+# parameter - outfile: location where positions get dumped
 # returns: table with columns containing timesteps, K, U, and p-components.
-function simulate(rs, vs, N, timestep, duration)
+function simulate(rs, vs, N, timestep, duration, outfile)
     output = zeros(duration, 6)
+    outfile_stream = open(outfile, "a")
 
     Fs, _ = LJ_forces_and_energy(rs, N);
     for i = 1:duration
@@ -107,18 +129,15 @@ function simulate(rs, vs, N, timestep, duration)
         Fs, U = LJ_forces_and_energy(rs, N);
         vs = update_v(vs, Fs, timestep)
         
+        # generate some data to plot later
         t = i*timestep; K = calculate_kinetic(vs)
         output[i,:] = [t K U sum(vs[:,1]) sum(vs[:,2]) sum(vs[:,3])]
         
-        # println(ps[i,2:4])
-        # if (i + 5) % 10 == 0
-        #     out_path = @sprintf("dump%i.xyz", i)
-        #     write_outfile(out_path, rs)
-        # end
+        # write current positions to outfile as one frame
+        frame = generate_xyz_frame(rs, i)
+        println(frame)
+        write(outfile_stream, frame)
     end
-
-    out_path = @sprintf("dump%i_final.xyz", duration)
-    write_outfile(out_path, rs)
 
     return output
 end
@@ -128,12 +147,21 @@ function main()
     rs = read_infile("pset-2/10.txt")
     vs = zeros(size(rs))
     N = size(rs)[1]
-    data = simulate(rs, vs, N, 0.002, 1000)
 
+    outfile = "dump.xyz"
+    write(outfile, "")
+
+    data = simulate(rs, vs, N, 0.002, 1000, outfile)
+
+    write_data(data, "diagnostic.csv")
     # momentum plot
-    plot(data[:,1], data[:,4:6], label=["p_x" "p_y" "p_z"], title="momentums for system are conserved (at zero)");
+    # p = plot(data[:,1], data[:,4:6], label=["p_x" "p_y" "p_z"], xlabel="time", ylabel="momentum",
+    # title="momentums for system are conserved (at zero)");
     # Hamiltonian plot
-    plot(data[:,1], [data[:,2:3] data[:,2]+data[:,3]], label=["K" "U" "H"], title="Hamiltonian is conserved for this system");
+    # p = plot(data[:,1], [data[:,2:3] data[:,2]+data[:,3]], label=["K" "U" "H"],
+    #     xlabel="time", ylabel="energy", linewidth=:2, title="the Hamiltonian is conserved for this system");
+    # display(p)
+
 end
 
 main()
