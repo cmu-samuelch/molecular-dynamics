@@ -2,7 +2,12 @@
 # hopefully, this will hold true and I won't have to go back and insert these
 # everywhere.
 
-# TODO: fix the output generator so i can get a gif of my particles moving around
+# TODO
+# randomly initialize particle velocities with zero total momentum
+# implement continuous force/energy with cutoff of 2.5 (dimless)
+# calculates instantaneous temperature, pressure
+# applies periodic boundary conditions and the nearest-image convention with
+#   side length as a variable set in the code
 
 using Plots, Printf, LinearAlgebra
 
@@ -149,18 +154,11 @@ function main()
     N = size(rs)[1]
 
     outfile = "dump.xyz"
-    write(outfile, "")
 
+    write(outfile, "")
     data = simulate(rs, vs, N, 0.002, 1000, outfile)
 
     write_data(data, "diagnostic.csv")
-    # momentum plot
-    # p = plot(data[:,1], data[:,4:6], label=["p_x" "p_y" "p_z"], xlabel="time", ylabel="momentum",
-    # title="momentums for system are conserved (at zero)");
-    # Hamiltonian plot
-    # p = plot(data[:,1], [data[:,2:3] data[:,2]+data[:,3]], label=["K" "U" "H"],
-    #     xlabel="time", ylabel="energy", linewidth=:2, title="the Hamiltonian is conserved for this system");
-    # display(p)
 
 end
 
