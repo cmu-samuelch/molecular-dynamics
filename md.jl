@@ -6,10 +6,10 @@
 # randomly initialize particle velocities with zero total momentum
 # implement continuous force/energy with cutoff of 2.5 (dimless)
 # calculates instantaneous temperature, pressure
-# applies periodic boundary conditions and the nearest-image convention with
-#   side length as a variable set in the code
+# applies periodic boundary conditions and the nearest-image convention
+#   create side length as a variable set in the code
 
-using Plots, Printf, LinearAlgebra
+using Plots, Printf, LinearAlgebra, Random
 
 # Reads the contents of the file into a N-by-3 array of positions.
 #
@@ -58,6 +58,19 @@ function write_data(data, outfile_path)
         output *= "\n"
     end
     write(outfile_path, output)
+end
+
+# initializes velocities to a certain average
+#
+# parameter - N: number of particles
+# parameter - μ: average velocity
+# returns: vector of velocities
+function init_velocities(N, μ)
+    vs = zeros(N, 3)
+    vs[1:end-1, :] = randn!(zeros(N-1, 3))
+    vs[end,:] = -[sum(vs[:,1]) sum(vs[:,2]) sum(vs[:,3])]
+    vs .+= μ
+    return vs
 end
 
 # Calculates the force vector exerted on particle 1 from LJ potential with 
