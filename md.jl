@@ -9,6 +9,8 @@
 # DONE - calculates instantaneous temperature, pressure
 # applies periodic boundary conditions and the nearest-image convention
 #   create side length as a variable set in the code
+#   PBCs - this will mainly affect positions
+#   nearest image - this will mainly affect force calculations
 #
 # PS #4:
 # ???
@@ -74,7 +76,7 @@ end
 # returns - 🚗s: vector of velocities
 function init_velocities(📍s, μ)
     🚗s = zeros(size(📍s))
-    randn!(🚗s[1:end-1, :])
+    🚗s[1:end-1, :] = randn!(🚗s[1:end-1, :])
     🚗s[end,:] = -sum(🚗s, dims=1)
     🚗s .+= μ
     return 🚗s
