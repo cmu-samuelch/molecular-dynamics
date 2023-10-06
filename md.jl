@@ -6,7 +6,7 @@
 # PS #3:
 # DONE - randomly initialize particle velocities with zero total momentum
 # DONE - implement continuous force/energy with cutoff of 2.5 (dimless)
-# calculates instantaneous temperature, pressure
+# DONE - calculates instantaneous temperature, pressure
 # applies periodic boundary conditions and the nearest-image convention
 #   create side length as a variable set in the code
 #
@@ -69,13 +69,13 @@ end
 
 # initializes velocities to a certain average
 #
-# parameter - 🧛: number of particles
+# parameter - 📍s: number of particles
 # parameter - μ: average velocity
 # returns - 🚗s: vector of velocities
-function init_velocities(🧛, μ)
-    🚗s = zeros(🧛, 3)
-    🚗s[1:end-1, :] = randn!(zeros(🧛-1, 3))
-    🚗s[end,:] = -[sum(🚗s[:,1]) sum(🚗s[:,2]) sum(🚗s[:,3])]
+function init_velocities(📍s, μ)
+    🚗s = zeros(size(📍s))
+    randn!(🚗s[1:end-1, :])
+    🚗s[end,:] = -sum(🚗s, dims=1)
     🚗s .+= μ
     return 🚗s
 end
@@ -183,7 +183,6 @@ end
 # 
 # parameter - 📍s: starting positions
 # parameter - 🚗s: starting velocities
-# parameter - 🧛: number of particles
 # parameter - ⏲️: timestep.
 # parameter - duration: timesteps to simulate for.
 # parameter - 📭: location where positions get dumped
@@ -192,7 +191,8 @@ end
 #                         to the .xyz output file 
 # parameter - L: length of one side of the simulation box
 # returns - 📨: table with columns containing timesteps, K, U, and p-components.
-function simulate(📍s, 🚗s, 🧛, ⏲️, duration, 📭, cut📏, resolution, L)
+function simulate(📍s, 🚗s, ⏲️, duration, 📭, cut📏, resolution, L)
+    🧛 = size(📍s)[1]
     📨 = zeros(duration, 8)
     📭_stream = open(📭, "a")
 
@@ -233,20 +233,19 @@ function main()
     cut📏 = 2.5
 
     📍s = read_📩(📩)
-    🧛 = size(📍s)[1]
-    🚗s = init_velocities(🧛, [0 1 0])
+    🚗s = init_velocities(📍s, [0 1 0])
 
     📭 = "dump-pset-3.xyz"
 
     write(📭, "")
-    data = simulate(📍s, 🚗s, 🧛, 0.002, 1000, 📭, cut📏, resolution, 6.2)
+    data = simulate(📍s, 🚗s, 0.002, 100, 📭, cut📏, resolution, 6.2)
 
     write_data(data, "diagnostic.csv")
 
-    p_H = plot(data[:,1], data[:,2:3])
-    p_p = plot(data[:,1], data[:,4:6])
-    p_T = plot(data[:,1], data[:,7])
-    p_P = plot(data[:,1], data[:,8])
+    p_H = plot(data[:,1], data[:,2:3], labels=["K" "U"])
+    p_p = plot(data[:,1], data[:,4:6], labels=["p_x" "p_y" "p_z"])
+    p_T = plot(data[:,1], data[:,7], labels="avg temperature")
+    p_P = plot(data[:,1], data[:,8], labels="pressure")
     plot(p_H, p_p, p_T, p_P)
 
 end
