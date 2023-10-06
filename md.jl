@@ -9,8 +9,6 @@
 # DONE - calculates instantaneous temperature, pressure
 # applies periodic boundary conditions and the nearest-image convention
 #   create side length as a variable set in the code
-#   PBCs - this will mainly affect positions
-#   nearest image - this will mainly affect force calculations
 #
 # PS #4:
 # ???
@@ -76,7 +74,7 @@ end
 # returns - 🚗s: vector of velocities
 function init_velocities(📍s, μ)
     🚗s = zeros(size(📍s))
-    🚗s[1:end-1, :] = randn!(🚗s[1:end-1, :])
+    randn!(🚗s[1:end-1, :])
     🚗s[end,:] = -sum(🚗s, dims=1)
     🚗s .+= μ
     return 🚗s
@@ -109,11 +107,14 @@ end
 # returns: scalar of LJ potential from interaction between the two particles.
 function LJ_potential(📍1, 📍2, cut📏)
     r📏 = norm(📍1 - 📍2)
-    if r📏 >= cut📏
+    LJ_U(📏) = 4 * (📏^-12 - 📏^-6)
+    if cut📏 == -1
+        U = LJ_U(r📏)
+    elseif r📏 >= cut📏
         U = 0
     else
-        LJ_U(📏) = 4 * (📏^-12 - 📏^-6)
-        U = LJ_U(r📏) - LJ_U(cut📏) - (r📏-cut📏)*(-48*cut📏^-13 + 6*cut📏^-7)
+        🤜_cut = (-48*cut📏^-13 + 24*cut📏^-7)
+        U = LJ_U(r📏) - LJ_U(cut📏) - (r📏-cut📏)*🤜_cut
     end
     return U
 end
@@ -193,7 +194,7 @@ end
 #                         to the .xyz output file 
 # parameter - L: length of one side of the simulation box
 # returns - 📨: table with columns containing timesteps, K, U, and p-components.
-function simulate(📍s, 🚗s, ⏲️, duration, 📭, cut📏, resolution, L)
+function simulate(📍s, 🚗s, ⏲️, cut📏, L, duration, 📭, resolution)
     🧛 = size(📍s)[1]
     📨 = zeros(duration, 8)
     📭_stream = open(📭, "a")
@@ -241,7 +242,7 @@ function main()
     📭 = "dump-pset-3.xyz"
 
     write(📭, "")
-    data = simulate(📍s, 🚗s, 0.002, 100, 📭, cut📏, resolution, L)
+    data = simulate(📍s, 🚗s, 0.002, cut📏, L, 100, 📭, resolution)
 
     write_data(data, "diagnostic.csv")
 
