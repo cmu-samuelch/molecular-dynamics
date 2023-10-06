@@ -231,6 +231,7 @@ function main()
     📩 = "liquid256.txt"
     resolution = 1
     cut📏 = 2.5
+    L = 6.2
 
     📍s = read_📩(📩)
     🚗s = init_velocities(📍s, [0 1 0])
@@ -238,7 +239,7 @@ function main()
     📭 = "dump-pset-3.xyz"
 
     write(📭, "")
-    data = simulate(📍s, 🚗s, 0.002, 100, 📭, cut📏, resolution, 6.2)
+    data = simulate(📍s, 🚗s, 0.002, 100, 📭, cut📏, resolution, L)
 
     write_data(data, "diagnostic.csv")
 
