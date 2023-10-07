@@ -16,7 +16,7 @@
 # LONG-TERM:
 # IN PROGRESS - improve variable names
 
-using Plots, Printf, LinearAlgebra, Random, Statistics
+using Plots, Printf, LinearAlgebra, Random, Statistics, Dates
 
 # Reads the contents of the file into a N-by-3 array of positions.
 #
@@ -127,7 +127,7 @@ end
 # parameter - 📍2: [x, y, z] vector for second particle's position
 # parameter - cut📏: cutoff length
 # returns: scalar of LJ potential from interaction between the two particles.
-function LJ_potential(📍1, 📍2, cut📏)
+function LJ_potential(📍1, 📍2, cut📏, L)
     r📏 = norm(nearest_image_displacement(📍1, 📍2, L))
     LJ_U(📏) = 4 * (📏^-12 - 📏^-6)
     if cut📏 == -1
@@ -156,7 +156,7 @@ function LJ_🤜s_and_energy(📍s, 🧛, cut📏, L)
             F = force_between_particles(📍s[i,:], 📍s[j,:], cut📏, L)
             🤜s[i,:] += F
             🤜s[j,:] -= F
-            U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏)
+            U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
         end 
     end
     return 🤜s, U
@@ -262,7 +262,7 @@ end
 
 # runs everything for the current problem set.
 function main()
-    println("running MD...")
+    print("initializing...")
     # PARAMETERS TO CHANGE
     📩 = "liquid256.txt"
     resolution = 1
@@ -271,12 +271,16 @@ function main()
     🌡️ = 1
 
     📍s = read_📩(📩)
-    🚗s = init_velocities(📍s, [10 20 0], 🌡️)
-
+    🚗s = init_velocities(📍s, [0 24 0], 🌡️)
+    
     📭 = "pset-3-2.xyz"
-
+    
     write(📭, "")
-    data = simulate(📍s, 🚗s, 0.002, cut📏, L, 100000, 📭, resolution)
+    println("done!")
+    t0 = now();
+    println("[", t0, "]", " running MD...")
+    data = simulate(📍s, 🚗s, 0.01, cut📏, L, 10000, 📭, resolution)
+    println(now() - t0, " elapsed during MD simulation")
 
     write_data(data, "diagnostic.csv")
 
