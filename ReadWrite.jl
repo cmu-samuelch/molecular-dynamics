@@ -1,4 +1,5 @@
 module ReadWrite
+using Printf
 export read_📩, generate_xyz_frame, write_data
 
 # Reads the contents of the file into a N-by-3 array of positions.

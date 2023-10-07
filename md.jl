@@ -1,6 +1,6 @@
-using Plots, Printf, LinearAlgebra, Random, Statistics, Dates
+using Plots, LinearAlgebra, Random, Statistics, Dates
 
-using .ReadWrite
+using .ReadWrite, .VelocityVerlet
 
 # initializes velocities to a certain average
 #
@@ -14,116 +14,6 @@ function init_velocities(📍s, μ, 🌡️)
     🚗s[end,:] = -sum(🚗s, dims=1)
     🚗s = (🚗s .* 🌡️) .+ μ
     return 🚗s
-end
-
-# adjusts the positions using nearest-image to account for PBCs
-#
-# If the difference in any dimension is farther than half the length of the
-# simulation box, then adjust by adding or subtracting half the length of the
-# simulation box as necessary.
-#
-# parameter - 📍1: [x, y, z] vector for first particle's position
-# parameter - 📍2: [x, y, z] vector for second particle's position
-# parameter - L: length of simulation box
-# returns: adjusted vector of (📍1 - 📍2)
-function nearest_image_displacement(📍1, 📍2, L)
-    r = 📍1 - 📍2;
-    # add one L to each dim where r_i < -L/2, subtract one L to each dim when r_i > +L/2
-    # final result is that all neighbors should be within +/- L/2 of particle
-    r = r .+ L*((r .< -L/2) .- (r .> L/2))
-    return r
-end    
-
-# Calculates the force vector exerted on particle 1 from LJ potential with 
-# particle 2.
-#
-# parameter - 📍1: [x, y, z] vector for first particle's position
-# parameter - 📍2: [x, y, z] vector for second particle's position
-# parameter - 📏_cut: cutoff length
-# parameter - L: length of simulation box
-# returns: vector of the three force components
-function force_between_particles(📍1, 📍2, cut📏, L)
-    r = nearest_image_displacement(📍1, 📍2, L)
-    r📏 = norm(r)
-    LJ_🤜(📏) = 48*📏^-13 - 24*📏^-7
-    if cut📏 == -1
-        🤜 = LJ_🤜(r📏)
-    elseif r📏 >= cut📏
-        🤜 = 0
-    else
-        🤜 = LJ_🤜(r📏) - LJ_🤜(cut📏)
-    end
-    return 🤜 / r📏 * r
-end
-
-# Calculates the LJ potential from the interaction between two particles.
-#
-# parameter - 📍1: [x, y, z] vector for first particle's position
-# parameter - 📍2: [x, y, z] vector for second particle's position
-# parameter - cut📏: cutoff length
-# returns: scalar of LJ potential from interaction between the two particles.
-function LJ_potential(📍1, 📍2, cut📏, L)
-    r📏 = norm(nearest_image_displacement(📍1, 📍2, L))
-    LJ_U(📏) = 4 * (📏^-12 - 📏^-6)
-    if cut📏 == -1
-        U = LJ_U(r📏)
-    elseif r📏 >= cut📏
-        U = 0
-    else
-        🤜_cut = (-48*cut📏^-13 + 24*cut📏^-7)
-        U = LJ_U(r📏) - LJ_U(cut📏) - (r📏-cut📏)*🤜_cut
-    end
-    return U
-end
-
-# Computes LJ forces using current positions
-#
-# parameter - 📍s: positions of all particles
-# parameter - 🧛: number of particles
-# parameter - L: length of one edge of simulation box
-# returns: array of forces on each particle
-# returns: total LJ potential energy of system
-function LJ_🤜s_and_energy(📍s, 🧛, cut📏, L)
-    🤜s = zeros(size(📍s))
-    U = 0
-    for i = 1:🧛           # for each particle
-        for j = i+1:🧛     # for each particle that i interacts with
-            F = force_between_particles(📍s[i,:], 📍s[j,:], cut📏, L)
-            🤜s[i,:] += F
-            🤜s[j,:] -= F
-            U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
-        end 
-    end
-    return 🤜s, U
-end
-
-# Updates velocities by half a timestep for velocity Verlet.
-#
-# parameter - 🚗s: vector of starting velocities
-# parameter - 🤜s: vector of forces for each particle
-# parameter - ⏲️: timestep
-# returns - 🚗s: vector of the new velocities
-function update_🚗s(🚗s, 🤜s, ⏲️)
-    🚗s += 🤜s * ⏲️/2
-    return 🚗s
-end
-
-# Updates positions by one timestep for velocity Verlet.
-#
-# Moves each particle by its velocity times one timestep. After moving, moves
-# particles back within the simulation bounds as dictated by PBCs.
-#
-# parameter - 📍s: vector of starting positions
-# parameter - 🚗s: vector of velocity for each particle
-# parameter - ⏲️: timestep
-# parameter - L: length of one edge of simulation box
-# returns - 📍s: vector of the new positions
-function update_📍s(📍s, 🚗s, ⏲️, L)
-    📍s += 🚗s*⏲️
-    # if any coordinate is negative, increase it by L. if any coordinate is 
-    # beyond L, decrease that by L. All particles should remain within the box.
-    📍s = 📍s .+ L*((📍s .< 0) - (📍s .> L))
-    return 📍s
 end
 
 # Calculates instantaneous total kinetic energy in the system.
@@ -170,10 +60,7 @@ function simulate(📍s, 🚗s, ⏲️, cut📏, L, duration, 📭, resolution)
     🤜s, _ = LJ_🤜s_and_energy(📍s, 🧛, cut📏, L);
     for i = 1:duration
         # VV forward one timestep
-        🚗s = update_🚗s(🚗s, 🤜s, ⏲️)
-        📍s = update_📍s(📍s, 🚗s, ⏲️, L)
-        🤜s, U = LJ_🤜s_and_energy(📍s, 🧛, cut📏, L);
-        🚗s = update_🚗s(🚗s, 🤜s, ⏲️)
+        🤜s, U = vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
         
         # generate some data to plot later
         t = i*⏲️; K = calculate_kinetic(🚗s)
@@ -214,7 +101,7 @@ function main()
     println("done!")
     t0 = now();
     println("[", t0, "]", " running MD...")
-    data = simulate(📍s, 🚗s, 0.01, cut📏, L, 100, 📭, resolution)
+    data = simulate(📍s, 🚗s, 0.005, cut📏, L, 4000, 📭, resolution)
     println(now() - t0, " elapsed during MD simulation")
 
     write_data(data, "diagnostic.csv")
