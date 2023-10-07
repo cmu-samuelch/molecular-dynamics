@@ -1,6 +1,6 @@
 module VelocityVerlet
 using LinearAlgebra
-export vv_one_timestep!, LJ_🤜s_and_energy
+export vv_one_timestep!, LJ_🤜s_and_energy!
 
 # adjusts the positions using nearest-image to account for PBCs
 #
@@ -64,12 +64,13 @@ end
 
 # Computes LJ forces using current positions
 #
+# parameter! - 🤜s: forces of all particles
 # parameter - 📍s: positions of all particles
 # parameter - 🧛: number of particles
 # parameter - L: length of one edge of simulation box
 # returns: total LJ potential energy of system
-function LJ_🤜s_and_energy(📍s, 🧛, cut📏, L)
-    🤜s = zeros(size(📍s))
+function LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L)
+    🤜s .*= 0;
     U = 0
     for i = 1:🧛           # for each particle
         for j = i+1:🧛     # for each particle that i interacts with
@@ -79,7 +80,7 @@ function LJ_🤜s_and_energy(📍s, 🧛, cut📏, L)
             U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
         end 
     end
-    return 🤜s, U
+    return U
 end
 
 # Updates velocities in-place by half a timestep for velocity Verlet.
@@ -107,11 +108,11 @@ function update_📍s!(📍s, 🚗s, ⏲️, L)
     📍s .+= L*((📍s .< 0) - (📍s .> L))
 end
 
-# runs VV for one timestep.
+# runs VV for one timestep; modified positions and velocities in-place.
 #
 # parameter! - 📍s: vector of positions for each particle
 # parameter! - 🚗s: vector of velocities for each particle
-# parameter - 🤜s: vector of forces on each particle
+# parameter! - 🤜s: vector of forces on each particle
 # parameter - ⏲️: timestep
 # parameter - L: length of one side of simulation box
 # parameter - cut📏: cutoff radius
@@ -120,9 +121,9 @@ end
 function vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
     update_🚗s!(🚗s, 🤜s, ⏲️)
     update_📍s!(📍s, 🚗s, ⏲️, L)
-    🤜s, U = LJ_🤜s_and_energy(📍s, 🧛, cut📏, L);
+    U = LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L);
     update_🚗s!(🚗s, 🤜s, ⏲️)
-    return 🤜s, U
+    return U
 end
 
 end

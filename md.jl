@@ -57,10 +57,11 @@ function simulate(📍s, 🚗s, ⏲️, cut📏, L, duration, 📭, resolution)
     frame = generate_xyz_frame(📍s, 0)
     write(📭_stream, frame)
 
-    🤜s, _ = LJ_🤜s_and_energy(📍s, 🧛, cut📏, L);
+    🤜s = zeros(size(📍s));
+    _ = LJ_🤜s_and_energy!(🤜s,📍s, 🧛, cut📏, L);
     for i = 1:duration
         # VV forward one timestep
-        🤜s, U = vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
+        U = vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
         
         # generate some data to plot later
         t = i*⏲️; K = calculate_kinetic(🚗s)
