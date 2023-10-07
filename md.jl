@@ -1,71 +1,6 @@
-# GLOBAL ASSUMPTIONS: ε, σ, and m are all 1.
-# hopefully, this will hold true and I won't have to go back and insert these
-# everywhere.
-
-# TODO
-# PS #3:
-# DONE - randomly initialize particle velocities with zero total momentum
-# DONE - implement continuous force/energy with cutoff of 2.5 (dimless)
-# DONE - calculates instantaneous temperature, pressure
-# applies periodic boundary conditions and the nearest-image convention
-#   create side length as a variable set in the code
-#
-# PS #4:
-# ???
-#
-# LONG-TERM:
-# IN PROGRESS - improve variable names
-
 using Plots, Printf, LinearAlgebra, Random, Statistics, Dates
 
-# Reads the contents of the file into a N-by-3 array of positions.
-#
-# parameter - 📩: path to the file to read
-# returns: N-by-3 array of positions
-function read_📩(📩)
-    text = read(📩, String)
-    lines = split(text, "\n")
-    📨 = Array{Float64}(undef, length(lines)-1, 3)
-    for i = eachindex(lines)
-        if lines[i] != ""
-            vals = split(lines[i])
-            for j = 1:3
-                📨[i, j] = parse(Float64, vals[j])
-            end
-        end
-    end
-    return 📨
-    end
-
-# Writes positions in current state to xyz format
-#
-# parameter - 📍s: positions to record
-# parameter - i: frame number
-# returns: string of all positions
-function generate_xyz_frame(📍s, i)
-    n = size(📍s)[1]
-    text = @sprintf("%i\nFrame %i\n", n, i)
-    for i = 1:n
-        text *= @sprintf("a %f %f %f\n", 📍s[i,1], 📍s[i,2], 📍s[i,3])
-    end
-    return text
-end
-
-# Writes data to a file.
-#
-# parameter - 📩: matrix of data to store
-# parameter - 📭: location to store data
-function write_data(📩, 📭)
-    (t, cols) = size(📩)
-    📨 = ""
-    for i = 1:t
-        for j = 1:cols
-            📨 *= @sprintf("%f,", 📩[i,j])
-        end
-        📨 *= "\n"
-    end
-    write(📭, 📨)
-end
+using .ReadWrite
 
 # initializes velocities to a certain average
 #
@@ -75,9 +10,9 @@ end
 # returns - 🚗s: vector of velocities
 function init_velocities(📍s, μ, 🌡️)
     🚗s = zeros(size(📍s))
-    🚗s[1:end-1, :] = randn!(🚗s[1:end-1, :]) .* 🌡️
+    randn!(🚗s[1:end-1, :])
     🚗s[end,:] = -sum(🚗s, dims=1)
-    🚗s .+= μ
+    🚗s = (🚗s .* 🌡️) .+ μ
     return 🚗s
 end
 
@@ -268,10 +203,10 @@ function main()
     resolution = 1
     cut📏 = 2.5
     L = 6.8
-    🌡️ = 1
+    🌡️ = 4
 
     📍s = read_📩(📩)
-    🚗s = init_velocities(📍s, [0 24 0], 🌡️)
+    🚗s = init_velocities(📍s, 0, 🌡️)
     
     📭 = "pset-3-2.xyz"
     
@@ -279,7 +214,7 @@ function main()
     println("done!")
     t0 = now();
     println("[", t0, "]", " running MD...")
-    data = simulate(📍s, 🚗s, 0.01, cut📏, L, 10000, 📭, resolution)
+    data = simulate(📍s, 🚗s, 0.01, cut📏, L, 100, 📭, resolution)
     println(now() - t0, " elapsed during MD simulation")
 
     write_data(data, "diagnostic.csv")
