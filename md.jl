@@ -128,7 +128,7 @@ end
 # parameter - cut📏: cutoff length
 # returns: scalar of LJ potential from interaction between the two particles.
 function LJ_potential(📍1, 📍2, cut📏)
-    r📏 = norm(📍1 - 📍2)
+    r📏 = norm(nearest_image_displacement(📍1, 📍2, L))
     LJ_U(📏) = 4 * (📏^-12 - 📏^-6)
     if cut📏 == -1
         U = LJ_U(r📏)
