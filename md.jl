@@ -10,7 +10,7 @@ using .ReadWrite, .VelocityVerlet
 # returns - 🚗s: vector of velocities
 function init_velocities(📍s, μ, 🌡️)
     🚗s = zeros(size(📍s))
-    randn!(🚗s[1:end-1, :])
+    🚗s[1:end-1, :] = randn(size(🚗s)[1]-1, size(🚗s)[2])
     🚗s[end,:] = -sum(🚗s, dims=1)
     🚗s = (🚗s .* 🌡️) .+ μ
     return 🚗s
@@ -31,7 +31,7 @@ end
 # parameter - V: volume of the system
 # returns: instantaneous average temperature and pressure for the system
 function calculate_🌡️_and_P(🚗s, 🧛, V)
-    🚗s_squared_mean = mean(sum(🚗s.^2, dims=2))
+    🚗s_squared_mean = sum(🚗s.^2)
     🌡️ = 🚗s_squared_mean / (3 * (🧛-1))
     P = 🧛 * 🌡️ / V
     return 🌡️, P
@@ -91,23 +91,24 @@ function main()
     resolution = 1
     cut📏 = 2.5
     L = 6.8
-    🌡️ = 4
+    🌡️ = 0.8
 
     📍s = read_📩(📩)
     🚗s = init_velocities(📍s, 0, 🌡️)
+    println(calculate_🌡️_and_P(🚗s, 256, 6.8^3))
     
     📭 = "pset-3-2.xyz"
     
     write(📭, "")
     println("done!")
     t0 = now();
-    println("[", t0, "]", " running MD...")
-    data = simulate(📍s, 🚗s, 0.005, cut📏, L, 4000, 📭, resolution)
+    println("[", t0, "] running MD...")
+    data = simulate(📍s, 🚗s, 0.004, cut📏, L, 20000, 📭, resolution)
     println(now() - t0, " elapsed during MD simulation")
 
     write_data(data, "diagnostic.csv")
 
-    p_H = plot(data[:,1], [data[:,2:3] sum(data[:,2:3], dims=2)], labels=["K" "U" "H"], xlabel="time", ylabel="energy")
+    p_H = plot(data[:,1], [data[:,2:3] sum(data[:,2:3], dims=2)], labels=["K" "U" "H"], legend=:left, xlabel="time", ylabel="energy")
     p_p = plot(data[:,1], data[:,4:6], labels=["p_x" "p_y" "p_z"], xlabel="time", ylabel="momentum")
     p_T = plot(data[:,1], data[:,7], legend=false, xlabel="time", ylabel="temperature")
     p_P = plot(data[:,1], data[:,8], legend=false, xlabel="time", ylabel="pressure")
