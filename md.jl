@@ -1,5 +1,6 @@
 using Plots, LinearAlgebra, Random, Statistics, Dates
 
+include("RecordData.jl"); include("VelocityVerlet.jl"); include("ReadWrite.jl");
 using .ReadWrite, .VelocityVerlet, .RecordData
 
 # initializes velocities to a certain average
@@ -61,20 +62,22 @@ end
 function main()
     print("initializing...")
     # PARAMETERS TO CHANGE
-    📩 = "liquid256.txt"
+    📍📩 = "liquid256.txt"
+    🚗📩 = "v.csv"
     resolution = 10
     cut📏 = 2.5
     L = 6.8
     🌡️ = 0.8
     📭 = "256test0.xyz"
 
-    📍s = read_📩(📩)
-    🚗s = init_velocities(📍s, 0, 🌡️)
+    📍s = read_📩(📍📩, "\t")
+    # 🚗s = init_velocities(📍s, 0, 🌡️)
+    🚗s = read_📩(🚗📩, ",")
     
     println("done!")
     t0 = now();
     println("[", t0, "] running MD...")
-    data = simulate(📍s, 🚗s, 0.004, cut📏, L, 50000, 📭, resolution)
+    data = simulate(📍s, 🚗s, 0.004, cut📏, L, 5000, 📭, resolution)
     println(now() - t0, " elapsed during MD simulation")
 
     write_data(data, "256diag0.csv")

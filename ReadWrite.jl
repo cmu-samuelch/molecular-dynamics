@@ -2,18 +2,20 @@ module ReadWrite
 using Printf
 export read_📩, write_xyz_frame, write_data
 
-# Reads the contents of the file into a N-by-3 array of positions.
+# Reads the contents of the file into an array of floats.
 #
 # parameter - 📩: path to the file to read
-# returns: N-by-3 array of positions
-function read_📩(📩)
+# parameter - separator: separator used to separate values in infile
+# returns: M-by-N array of numeric values.
+function read_📩(📩, separator)
     text = read(📩, String)
     lines = split(text, "\n")
-    📨 = Array{Float64}(undef, length(lines)-1, 3)
+    line1 = split(lines[1], separator)
+    📨 = Array{Float64}(undef, length(lines)-1, length(line1))
     for i = eachindex(lines)
         if lines[i] != ""
-            vals = split(lines[i])
-            for j = 1:3
+            vals = split(lines[i], separator)
+            for j = eachindex(vals)
                 📨[i, j] = parse(Float64, vals[j])
             end
         end
@@ -48,7 +50,7 @@ function write_data(📩, 📭)
     t = size(📩)[1]
     📨 = ""
     for i = 1:t
-        📨 *= @sprintf("%s\n", sprint(show, 📩[i,:]))
+        📨 *= @sprintf("%s\n", sprint(show, 📩[i,:])[2:end-1])
     end
     write(📭, 📨)
 end
