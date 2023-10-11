@@ -62,6 +62,18 @@ function LJ_potential(📍1, 📍2, cut📏, L)
     return U
 end
 
+# Calculates the pressure resultant from interaction between particles 1 and 2.
+#
+# parameter - 📍1: [x, y, z] vector for first particle's position
+# parameter - 📍2: [x, y, z] vector for second particle's position
+# parameter - L: length of simulation box
+# parameter - F: force on particle 1 from particle 2
+# returns: pressure of interaction
+function pressure_between_particles(📍1, 📍2, L, F)
+    r = nearest_image_displacement(📍1, 📍2, L)
+    return r' * F
+end
+
 # Computes LJ forces using current positions
 #
 # parameter! - 🤜s: forces of all particles
@@ -69,18 +81,20 @@ end
 # parameter - 🧛: number of particles
 # parameter - L: length of one edge of simulation box
 # returns: total LJ potential energy of system
+# returns: pressure as calculated from forces 
 function LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L)
     🤜s .*= 0;
-    U = 0
+    U = 0; P = 0;
     for i = 1:🧛           # for each particle
         for j = i+1:🧛     # for each particle that i interacts with
             F = force_between_particles(📍s[i,:], 📍s[j,:], cut📏, L)
             🤜s[i,:] .+= F
             🤜s[j,:] .-= F
             U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
+            P += pressure_between_particles(📍s[i,:], 📍s[j,:], L, F);
         end 
     end
-    return U
+    return U, P
 end
 
 # Updates velocities in-place by half a timestep for velocity Verlet.
@@ -118,12 +132,13 @@ end
 # parameter - cut📏: cutoff radius
 # parameter - 🧛: number of particles in system
 # returns: system total potential energy at the end of timestep
+# returns: pressure from forces term at end of timestep
 function vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
     update_🚗s!(🚗s, 🤜s, ⏲️)
     update_📍s!(📍s, 🚗s, ⏲️, L)
-    U = LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L);
+    U, P_from_🤜s = LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L);
     update_🚗s!(🚗s, 🤜s, ⏲️)
-    return U
+    return U, P_from_🤜s
 end
 
 end

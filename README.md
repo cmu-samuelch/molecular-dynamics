@@ -23,6 +23,8 @@ PS #3:
 - DONE: calculates instantaneous temperature, pressure
     - done?: applies periodic boundary conditions and the nearest-image convention
     - done?: create side length as a variable set in the code
+- fix pressure calculation and add in the term from forces, do this in the
+    `VV.jl-> LJ_🤜s_and_energy!` function
 
 PS #4:
 - ???

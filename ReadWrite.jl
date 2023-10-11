@@ -1,6 +1,6 @@
 module ReadWrite
 using Printf
-export read_📩, generate_xyz_frame, write_data
+export read_📩, write_xyz_frame, write_data
 
 # Reads the contents of the file into a N-by-3 array of positions.
 #
@@ -21,18 +21,23 @@ function read_📩(📩)
     return 📨
     end
 
-# Writes positions in current state to xyz format
+# Writes positions in current state to xyz format, if applicable
 #
+# parameter - 📭: location to store data
 # parameter - 📍s: positions to record
 # parameter - i: frame number
+# parameter - resolution: number of timesteps between each write to outfile
 # returns: string of all positions
-function generate_xyz_frame(📍s, i)
-    n = size(📍s)[1]
-    text = @sprintf("%i\nFrame %i\n", n, i)
-    for i = 1:n
-        text *= @sprintf("a %f %f %f\n", 📍s[i,1], 📍s[i,2], 📍s[i,3])
+function write_xyz_frame(📭, 📍s, i, resolution)
+    if i % resolution == 0
+        n = size(📍s)[1]
+        text = @sprintf("%i\nFrame %i\n", n, i)
+        for i = 1:n
+            text *= @sprintf("a %f %f %f\n", 📍s[i,1], 📍s[i,2], 📍s[i,3])
+        end
+
+        write(📭, text)
     end
-    return text
 end
 
 # Writes data to a file.
