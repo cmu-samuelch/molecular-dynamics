@@ -1,57 +1,40 @@
 using Plots, LinearAlgebra, Random, Statistics, Dates
 
-include("RecordData.jl"); include("VelocityVerlet.jl"); include("ReadWrite.jl");
-using .ReadWrite, .VelocityVerlet, .RecordData
-
-# initializes velocities to a certain average
-#
-# parameter - 📍s: number of particles
-# parameter - μ: average velocity
-# parameter - 🌡️: desired temperature of system
-# returns - 🚗s: vector of velocities
-function init_velocities(📍s, μ, 🌡️)
-    🚗s = randn(size(📍s))
-    🚗s[end,:] = -sum(🚗s[1:end-1, :], dims=1)
-    🚗s .*= 🌡️; 🚗s .+= μ;
-    return 🚗s
-end
+include("ReadWrite.jl"); include("Parameters.jl")
+include("RecordData.jl"); include("VelocityVerlet.jl");
+using .ReadWrite, .VelocityVerlet, .RecordData, .Parameters
 
 # Simulates particles.
 # 
-# parameter - 📍s: starting positions
-# parameter - 🚗s: starting velocities
-# parameter - ⏲️: timestep.
-# parameter - cut📏: cutoff radius
-# parameter - L: length of one side of the simulation box
-# parameter - duration: timesteps to simulate for.
-# parameter - 📭: location where positions get dumped
-# parameter - resolution: number of timesteps between each write to outfile
+# parameter - p: struct containing simulation parameters
+# parameter - 📭: path to file where frames will be stored
 # returns - 📨: table with all data we want to keep track of.
-function simulate(📍s, 🚗s, ⏲️, cut📏, L, duration, 📭, resolution)
-    🧛 = size(📍s)[1]
-    📨 = zeros(duration, 8)
+function simulate(p, 📭)
+    📨 = zeros(Float64, p.numTimesteps, 9)
     write(📭, "")
     📭_stream = open(📭, "a")
 
-    write_xyz_frame(📭_stream, 📍s, 0, resolution)
-    🤜s = zeros(size(📍s));
+    write_xyz_frame(📭_stream, p.📍s, 0, p.frameSaveFrequency)
 
-    _ = LJ_🤜s_and_energy!(🤜s,📍s, 🧛, cut📏, L);
-    for i = 1:duration
+    📍s0 = copy(p.📍s)
+
+    _ = LJ_🤜s_and_energy!(p.🤜s, p.📍s, p.🧛, p.cut📏, p.boxLength);
+    for i = 1:p.numTimesteps
         # VV forward one timestep
-        U, P_from_🤜s = vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
+        U, P_from_🤜s = vv_one_timestep!(p)
         
         # generate some data to plot later
-        t = i*⏲️; K = calculate_kinetic(🚗s)
-        🌡️, P = calculate_🌡️_and_P(🚗s, 🧛, L^3, P_from_🤜s)
-        📨[i,:] = [t K U sum(🚗s, dims=1) 🌡️ P]
+        t = i*p.⏲️; K = calculate_kinetic(p.🚗s)
+        🌡️, P = calculate_🌡️_and_P(p.🚗s, p.🧛, p.boxLength^3, P_from_🤜s)
+        MSD = calculateMSD(p.📍s, 📍s0)
+        📨[i,:] = [t K U sum(p.🚗s, dims=1) 🌡️ P MSD]
         
         # write current positions to outfile as one frame
-        write_xyz_frame(📭_stream, 📍s, i, resolution)
+        write_xyz_frame(📭_stream, p.📍s, i, p.frameSaveFrequency)
 
-        if i % (duration/25) == 0
-            println("simulation ", i/duration*100, "% complete; ",
-                     (duration-i), "/", duration, " timesteps remaining")
+        if i % (p.numTimesteps/10) == 0
+            println("simulation ", i/p.numTimesteps*100, "% complete; ",
+                (p.numTimesteps-i), "/", p.numTimesteps, " timesteps remaining")
         end
     end
 
@@ -62,30 +45,25 @@ end
 function main()
     print("initializing...")
     # PARAMETERS TO CHANGE
-    📍📩 = "liquid256.txt"
-    🚗📩 = "v.csv"
-    resolution = 10
-    cut📏 = 2.5
-    L = 6.8
-    🌡️ = 0.8
-    📭 = "256test0.xyz"
-
-    📍s = read_📩(📍📩, "\t")
-    # 🚗s = init_velocities(📍s, 0, 🌡️)
-    🚗s = read_📩(🚗📩, ",")
+    filename = "4.1"
+    📭 = "256p" * filename * ".xyz"
+    p = setup("liquid256.txt")
     
     println("done!")
+
     t0 = now();
     println("[", t0, "] running MD...")
-    data = simulate(📍s, 🚗s, 0.004, cut📏, L, 5000, 📭, resolution)
+    data = simulate(p, 📭)
     println(now() - t0, " elapsed during MD simulation")
 
-    write_data(data, "256diag0.csv")
+    write_data(data, "256p" * filename * ".csv")
 
-    p_H = plot(data[:,1], [data[:,2:3] sum(data[:,2:3], dims=2)], labels=["K" "U" "H"], legend=:left, xlabel="time", ylabel="energy")
-    p_p = plot(data[:,1], data[:,4:6], labels=["p_x" "p_y" "p_z"], xlabel="time", ylabel="momentum")
-    p_T = plot(data[:,1], data[:,7], legend=false, xlabel="time", ylabel="temperature")
-    p_P = plot(data[:,1], data[:,8], legend=false, xlabel="time", ylabel="pressure")
+    t = data[:,1]
+    p_H = plot(t, [data[:,2:3] sum(data[:,2:3], dims=2)], labels=["K" "U" "H"], legend=:left, xlabel="time", ylabel="energy")
+    p_p = plot(t, data[:,4:6], labels=["p_x" "p_y" "p_z"], xlabel="time", ylabel="momentum")
+    p_T = plot(t, data[:,7], legend=false, xlabel="time", ylabel="temperature")
+    p_P = plot(t, data[:,8], legend=false, xlabel="time", ylabel="pressure")
+    p_MSD = plot(t, data[:,9], legend=false, xlabel="time", ylabel="msd")
     plot(p_H, p_p, p_T, p_P)
 
 end

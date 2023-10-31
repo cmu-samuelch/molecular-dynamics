@@ -17,20 +17,21 @@ hopefully, this will hold true and I won't have to go back and insert these
 everywhere.
 
 # TODOs
-PS #3:
-- DONE: randomly initialize particle velocities with zero total momentum
-- DONE: implement continuous force/energy with cutoff of 2.5 (dimless)
-- DONE: calculates instantaneous temperature, pressure
-    - done?: applies periodic boundary conditions and the nearest-image convention
-    - done?: create side length as a variable set in the code
-- fix pressure calculation and add in the term from forces, do this in the
-    `VV.jl-> LJ_🤜s_and_energy!` function
-
 PS #4:
-- ???
+- Implement the Nosé-Hoover thermostat
+    - `vv_one_timestep!`: update the thermostat term after updating positions
+    - new function: implement thermostat updates
+    - `update_🚗s!`: include push from thermostat as well
+- MSD calculation
+    - keep track of unadjusted positions
 
 LONG-TERM:
 - IN PROGRESS: improve variable names
+- NOT STARTED: improve the style and interface, make the interface more opaque
+and easier to continue running from the top level without having to change my
+interfaces each problem set
+    - implement a struct to pass along simulation parameters so i dont have to
+    do like five runs just to debug my interface
 
 
 # NOTES

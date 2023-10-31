@@ -1,5 +1,5 @@
 module RecordData
-export calculate_kinetic, calculate_🌡️_and_P
+export calculate_kinetic, calculate_🌡️_and_P, calculateMSD
 
 # Calculates instantaneous total kinetic energy in the system.
 #
@@ -20,6 +20,15 @@ function calculate_🌡️_and_P(🚗s, 🧛, V, P_from_🤜s)
     🌡️ = sum(🚗s.^2) / (3 * (🧛-1))
     P = 🧛 * 🌡️ / V + P_from_🤜s / (3*V)
     return 🌡️, P
+end
+
+# calculates mean squared displacement of positions in system
+#
+# parameter - 📍s: vector of unadjusted positions
+# parameter - 📍s0: vector of original positions
+# returns: instantaneous mean squared displacement for system
+function calculateMSD(📍s, 📍s0)
+    return sum((📍s .- 📍s0).^2)
 end
 
 end

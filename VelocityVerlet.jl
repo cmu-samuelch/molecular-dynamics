@@ -1,5 +1,7 @@
 module VelocityVerlet
-using LinearAlgebra
+include("Parameters.jl")
+using LinearAlgebra, .Parameters
+
 export vv_one_timestep!, LJ_🤜s_and_energy!
 
 # adjusts the positions using nearest-image to account for PBCs
@@ -83,7 +85,7 @@ end
 # returns: total LJ potential energy of system
 # returns: pressure as calculated from forces 
 function LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L)
-    🤜s .*= 0;
+    fill!(🤜s, 0);
     U = 0; P = 0;
     for i = 1:🧛           # for each particle
         for j = i+1:🧛     # for each particle that i interacts with
@@ -101,9 +103,10 @@ end
 #
 # parameter! - 🚗s: vector of starting velocities
 # parameter - 🤜s: vector of forces for each particle
+# parameter - ζs: adjustment from thermostat
 # parameter - ⏲️: timestep
-function update_🚗s!(🚗s, 🤜s, ⏲️)
-    🚗s .+= 🤜s * ⏲️/2
+function update_🚗s!(🚗s, 🤜s, ζs, ⏲️)
+    🚗s .+= ⏲️/2 * (🤜s - ζs .* 🚗s)
 end
 
 # Updates positions in-place by one timestep for velocity Verlet.
@@ -112,14 +115,29 @@ end
 # particles back within the simulation bounds as dictated by PBCs.
 #
 # parameter! - 📍s: vector of starting positions
+# parameter! - unadjusted📍s: vector of positions if not subject to PBCs
 # parameter - 🚗s: vector of velocity for each particle
 # parameter - ⏲️: timestep
 # parameter - L: length of one edge of simulation box
-function update_📍s!(📍s, 🚗s, ⏲️, L)
+function update_📍s!(📍s, unadjusted📍s, 🚗s, ⏲️, L)
     📍s .+= 🚗s*⏲️
+    unadjusted📍s .+= 🚗s*⏲️
     # if any coordinate is negative, increase it by L. if any coordinate is 
     # beyond L, decrease that by L. All particles should remain within the box.
     📍s .+= L*((📍s .< 0) - (📍s .> L))
+end
+
+# Updates thermostat in-place by one timestep for velocity Verlet.
+#
+# parameter! - ζs: starting thermostat
+# parameter - 🚗s: vector of velocity for each particle
+# parameter - τ: damping timescale
+# parameter - T_des: desired temperature
+# parameter - ⏲️: timestep
+# parameter - 🧛: number of particles in system
+function update_ζs!(ζs, 🚗s, τ, T_des, ⏲️, 🧛)
+    T_inst = sum(🚗s.^2) / (3 * (🧛-1))
+    ζs .+= (⏲️ / τ^2) * (T_inst / T_des - 1)
 end
 
 # runs VV for one timestep; modified positions and velocities in-place.
@@ -127,17 +145,22 @@ end
 # parameter! - 📍s: vector of positions for each particle
 # parameter! - 🚗s: vector of velocities for each particle
 # parameter! - 🤜s: vector of forces on each particle
+# parameter! - ζs: thermostat constants
 # parameter - ⏲️: timestep
 # parameter - L: length of one side of simulation box
 # parameter - cut📏: cutoff radius
 # parameter - 🧛: number of particles in system
+# parameter - τ: thermostat damping timescale
+# parameter - T_des: desired temperature
 # returns: system total potential energy at the end of timestep
 # returns: pressure from forces term at end of timestep
-function vv_one_timestep!(📍s, 🚗s, 🤜s, ⏲️, L, cut📏, 🧛)
-    update_🚗s!(🚗s, 🤜s, ⏲️)
-    update_📍s!(📍s, 🚗s, ⏲️, L)
-    U, P_from_🤜s = LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L);
-    update_🚗s!(🚗s, 🤜s, ⏲️)
+function vv_one_timestep!(p)
+    update_🚗s!(p.🚗s, p.🤜s, p.ζs, p.⏲️)
+    update_📍s!(p.📍s, p.unadjusted📍s, p.🚗s, p.⏲️, p.boxLength)
+    update_ζs!(p.ζs, p.🚗s, p.τ, p.T_des, p.⏲️, p.🧛)
+    U, P_from_🤜s = LJ_🤜s_and_energy!(p.🤜s, p.📍s, p.🧛, p.cut📏, p.boxLength);
+    update_🚗s!(p.🚗s, p.🤜s, p.ζs, p.⏲️)
+    p.🚗s ./= (1 .+ 0.5.*p.⏲️.*p.ζs)
     return U, P_from_🤜s
 end
 
