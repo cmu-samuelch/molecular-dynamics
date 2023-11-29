@@ -2,7 +2,7 @@ module VelocityVerlet
 include("Parameters.jl")
 using LinearAlgebra, .Parameters
 
-export vv_one_timestep!, LJ_🤜s_and_energy!
+export nhVVtimestep!, nveVVtimestep!, LJ_🤜s_and_energy!
 
 # adjusts the positions using nearest-image to account for PBCs
 #
@@ -20,7 +20,7 @@ function nearest_image_displacement(📍1, 📍2, L)
     # final result is that all neighbors should be within +/- L/2 of particle
     r .+= L*((r .< -L/2) .- (r .> L/2))
     return r
-end    
+end
 
 # Calculates the force vector exerted on particle 1 from LJ potential with 
 # particle 2.
@@ -103,10 +103,15 @@ end
 #
 # parameter! - 🚗s: vector of starting velocities
 # parameter - 🤜s: vector of forces for each particle
-# parameter - ζs: adjustment from thermostat
 # parameter - ⏲️: timestep
-function update_🚗s!(🚗s, 🤜s, ζs, ⏲️)
+# Nosé-Hoover thermostat:
+# parameter - ζs: adjustment from thermostat
+function update🚗s!(🚗s, 🤜s, ζs, ⏲️)
     🚗s .+= ⏲️/2 * (🤜s - ζs .* 🚗s)
+end
+# NVE dynamics:
+function update🚗s!(🚗s, 🤜s, ⏲️)
+    🚗s .+= ⏲️/2 * 🤜s
 end
 
 # Updates positions in-place by one timestep for velocity Verlet.
@@ -119,7 +124,7 @@ end
 # parameter - 🚗s: vector of velocity for each particle
 # parameter - ⏲️: timestep
 # parameter - L: length of one edge of simulation box
-function update_📍s!(📍s, unadjusted📍s, 🚗s, ⏲️, L)
+function update📍s!(📍s, unadjusted📍s, 🚗s, ⏲️, L)
     📍s .+= 🚗s*⏲️
     unadjusted📍s .+= 🚗s*⏲️
     # if any coordinate is negative, increase it by L. if any coordinate is 
@@ -135,32 +140,33 @@ end
 # parameter - T_des: desired temperature
 # parameter - ⏲️: timestep
 # parameter - 🧛: number of particles in system
-function update_ζs!(ζs, 🚗s, τ, T_des, ⏲️, 🧛)
+function updateζs!(ζs, 🚗s, τ, T_des, ⏲️, 🧛)
     T_inst = sum(🚗s.^2) / (3 * (🧛-1))
     ζs .+= (⏲️ / τ^2) * (T_inst / T_des - 1)
 end
 
-# runs VV for one timestep; modified positions and velocities in-place.
+# uses VV to update everything by one timestep
 #
-# parameter! - 📍s: vector of positions for each particle
-# parameter! - 🚗s: vector of velocities for each particle
-# parameter! - 🤜s: vector of forces on each particle
-# parameter! - ζs: thermostat constants
-# parameter - ⏲️: timestep
-# parameter - L: length of one side of simulation box
-# parameter - cut📏: cutoff radius
-# parameter - 🧛: number of particles in system
-# parameter - τ: thermostat damping timescale
-# parameter - T_des: desired temperature
+# parameter! - p: struct containing all simulation data
 # returns: system total potential energy at the end of timestep
 # returns: pressure from forces term at end of timestep
-function vv_one_timestep!(p)
-    update_🚗s!(p.🚗s, p.🤜s, p.ζs, p.⏲️)
-    update_📍s!(p.📍s, p.unadjusted📍s, p.🚗s, p.⏲️, p.boxLength)
-    update_ζs!(p.ζs, p.🚗s, p.τ, p.T_des, p.⏲️, p.🧛)
+# Nosé-Hoover thermostat:
+function nhVVtimestep!(p)
+    update🚗s!(p.🚗s, p.🤜s, p.ζs, p.⏲️)
+    update📍s!(p.📍s, p.Δ📍s, p.🚗s, p.⏲️, p.boxLength)
+    updateζs!(p.ζs, p.🚗s, p.τ, p.T_des, p.⏲️, p.🧛)
     U, P_from_🤜s = LJ_🤜s_and_energy!(p.🤜s, p.📍s, p.🧛, p.cut📏, p.boxLength);
-    update_🚗s!(p.🚗s, p.🤜s, p.ζs, p.⏲️)
+    update🚗s!(p.🚗s, p.🤜s, p.ζs, p.⏲️)
     p.🚗s ./= (1 .+ 0.5.*p.⏲️.*p.ζs)
+    return U, P_from_🤜s
+end
+
+# NVE dynamics:
+function nveVVtimestep!(p)
+    update🚗s!(p.🚗s, p.🤜s, p.⏲️)
+    update📍s!(p.📍s, p.Δ📍s, p.🚗s, p.⏲️, p.boxLength)
+    U, P_from_🤜s = LJ_🤜s_and_energy!(p.🤜s, p.📍s, p.🧛, p.cut📏, p.boxLength);
+    update🚗s!(p.🚗s, p.🤜s, p.⏲️)
     return U, P_from_🤜s
 end
 

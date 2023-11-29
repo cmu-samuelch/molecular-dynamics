@@ -24,11 +24,11 @@ end
 
 # calculates mean squared displacement of positions in system
 #
-# parameter - 📍s: vector of unadjusted positions
-# parameter - 📍s0: vector of original positions
+# parameter - Δ📍s: vector of displacements from original positions
+# parameter - 🧛: number of particles in system
 # returns: instantaneous mean squared displacement for system
-function calculateMSD(📍s, 📍s0)
-    return sum((📍s .- 📍s0).^2)
+function calculateMSD(Δ📍s, 🧛)
+    return sum((Δ📍s).^2) / 🧛
 end
 
 end

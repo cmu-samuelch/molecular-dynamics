@@ -10,25 +10,25 @@ function setup(inputpositions::String)
     📍📩 = inputpositions
     📍s = read_📩(📍📩, "\t")
 
-    unadjusted = copy(📍s)
+    Δ📍s = zeros(size(📍s))
     🚗s = zeros(size(📍s))
     🤜s = zeros(size(📍s))
     ζs = zeros(size(📍s))
 
     timestep = 0.004
-    numTimesteps = 10000
+    numTimesteps = 1000
     resolution = 10
     cut📏 = 2.5
     L = 6.8
 
     ε = 1.66e-21
-    T_des = 100
+    T_des = 30
     T_des_nondimensional = T_des * 1.38e-23 / ε
     τdamp = 0.05
 
     # 🚗s = read_📩(🚗📩, ",")
     
-    P = SimulationParameters(📍s, unadjusted, 🚗s, 🤜s, ζs, 
+    P = SimulationParameters(📍s, Δ📍s, 🚗s, 🤜s, ζs, 
         T_des_nondimensional, size(📍s)[1], timestep, numTimesteps,
         cut📏, L, τdamp, resolution)
 
@@ -50,7 +50,7 @@ end
 
 struct SimulationParameters         # keep track of parameters
     📍s::Array{Float64}             # positions
-    unadjusted📍s::Array{Float64}   # unadjusted positions
+    Δ📍s::Array{Float64}            # displacements
     🚗s::Array{Float64}             # velocities
     🤜s::Array{Float64}             # forces
     ζs::Array{Float64}              # thermostat adjustments

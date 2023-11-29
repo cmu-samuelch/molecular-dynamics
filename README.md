@@ -18,7 +18,7 @@ everywhere.
 
 # TODOs
 PS #4:
-- Implement the Nosé-Hoover thermostat
+- DONE: Implement the Nosé-Hoover thermostat
     - `vv_one_timestep!`: update the thermostat term after updating positions
     - new function: implement thermostat updates
     - `update_🚗s!`: include push from thermostat as well
@@ -27,10 +27,10 @@ PS #4:
 
 LONG-TERM:
 - IN PROGRESS: improve variable names
-- NOT STARTED: improve the style and interface, make the interface more opaque
+- IN PROGRESS: improve the style and interface, make the interface more opaque
 and easier to continue running from the top level without having to change my
 interfaces each problem set
-    - implement a struct to pass along simulation parameters so i dont have to
+    - DONE: implement a struct to pass along simulation parameters so i dont have to
     do like five runs just to debug my interface
 
 
