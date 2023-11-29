@@ -22,7 +22,7 @@ function setup(inputpositions::String)
     L = 6.8
 
     ε = 1.66e-21
-    T_des = 30
+    T_des = 100
     T_des_nondimensional = T_des * 1.38e-23 / ε
     τdamp = 0.05
 
