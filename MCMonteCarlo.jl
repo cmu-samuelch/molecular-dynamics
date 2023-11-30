@@ -2,7 +2,7 @@ module MCMC
 include("Parameters.jl")
 using LinearAlgebra, Random, .Parameters
 
-export MCMCtrial!, LJ_U_system
+export MCMCtrial!, U_system
 
 # adjusts the positions using nearest-image to account for PBCs
 #
@@ -76,13 +76,28 @@ function pressure_between_particles(📍1, 📍2, L, F)
     return r' * F
 end
 
+# Computes U_potential for a single particle
+#
+# parameter - 📍s: positions of all particles
+# parameter - i: index of particle to perturb
+# parameter - 🧛: number of particles
+# parameter - cut📏: cutoff radius
+# parameter - L: length of one edge of simulation box
+function Uparticle(📍s, i, 🧛, cut📏, L)
+    U = 0
+    for j = i+1:🧛
+        U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
+    end
+    return U
+end
+
 # Computes total U_potential of system using LJ
 #
 # parameter - 📍s: positions of all particles
 # parameter - 🧛: number of particles
 # parameter - cut📏: cutoff radius
 # parameter - L: length of one edge of simulation box
-function LJ_U_system(📍s, 🧛, cut📏, L)
+function U_system(📍s, 🧛, cut📏, L)
     U = 0
     for i = 1:🧛
         for j = i+1:🧛
@@ -114,25 +129,25 @@ end
 #
 # parameter! - 📍s: positions of all particles
 # parameter - i: index of particle to perturb
-# parameter - U: total potential energy of current state
 # parameter - β: (k_B T)^(-1), determines perturbation probability
 # parameter - 🧛: number of particles
 # parameter - cut📏: cutoff radius
 # parameter - L: length of one edge of simulation box
 # parameter - 🫨max: maximum perturbation in any dim
 # returns: energy of the new state
-function 🫨1!(📍s, i, U, β, 🧛, cut📏, L, 🫨max)
+function 🫨1!(📍s, i, β, 🧛, cut📏, L, 🫨max)
+    U = Uparticle(📍s, i, 🧛, cut📏, L)
     🫨 = (rand(Float64, 3) .- 0.5) .* 🫨max;
     📍s[i,:] += 🫨
     📍s .+= L*((📍s .< 0) - (📍s .> L)) # PBC
-    🫨U = LJ_U_system(📍s, 🧛, cut📏, L)
+    🫨U = Uparticle(📍s, i, 🧛, cut📏, L)
     # reject and revert the perturbation if U increases and stat check failed
     if 🫨U > U && (rand(Float64) > exp(-β*(🫨U-U)))
         📍s[i,:] .-= 🫨
         📍s .-= L*((📍s .< 0) - (📍s .> L)) # undoes PBC
-        return U
+        return 0
     end
-    return 🫨U
+    return 1
 end
 
 # Carries out one MCMC trial on the entire system.
@@ -148,11 +163,13 @@ end
 # returns: pressure of the new state
 function MCMCtrial!(📍s, U, β, 🧛, cut📏, L, 🫨max)
     order = shuffle(1:256)
+    accept = 0
     for i = order
-        U = 🫨1!(📍s, i, U, β, 🧛, cut📏, L, 🫨max)
+        accept += 🫨1!(📍s, i, β, 🧛, cut📏, L, 🫨max)
     end
     P = pressure(📍s, 🧛, cut📏, L)
-    return U, P
+    U = U_system(📍s, 🧛, cut📏, L)
+    return U, P, accept / 🧛
 end
 
 end

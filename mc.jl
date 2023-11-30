@@ -9,7 +9,7 @@ using .ReadWrite, .Parameters, .MCMC
 # parameter - 📭: path to file where frames will be stored
 # returns - 📨: table with all data we want to keep track of.
 function simulate(p, 📭)
-    📨 = zeros(Float64, p.numTimesteps, 3)
+    📨 = zeros(Float64, p.numTimesteps, 4)
     write(📭, "")
     📭_stream = open(📭, "a")
 
@@ -18,15 +18,15 @@ function simulate(p, 📭)
     equilibrated = false
 
     β = 1/p.T_des
-    max_🫨 = 0.5
+    max_🫨 = 0.1
 
-    U = LJ_U_system(p.📍s, p.🧛, p.cut📏, p.boxLength);
+    U = U_system(p.📍s, p.🧛, p.cut📏, p.boxLength);
     for i = 1:p.numTimesteps
         # MC one trial
-        U, P = MCMCtrial!(p.📍s, U, β, p.🧛, p.cut📏, p.boxLength, max_🫨)
+        U, P, accept = MCMCtrial!(p.📍s, U, β, p.🧛, p.cut📏, p.boxLength, max_🫨)
         # generate some data to plot later
         t = i*p.⏲️;
-        📨[i,:] = [t U P]
+        📨[i,:] = [t U P accept]
 
         # write current positions to outfile as one frame
         write_xyz_frame(📭_stream, p.📍s, i, p.frameSaveFrequency)
@@ -52,7 +52,7 @@ end
 function main()
     print("initializing...")
     # PARAMETERS TO CHANGE
-    filename = "4.1-30k"
+    filename = "6.2"
     📭 = "256p" * filename * ".xyz"
     p = setup("liquid256.txt")
     
@@ -66,13 +66,11 @@ function main()
     write_data(data, "256p" * filename * ".csv")
 
     t = data[:,1]
-    p_H = plot(t, [data[:,2:3] sum(data[:,2:3], dims=2)], labels=["K" "U" "H"], legend=:left, xlabel="time", ylabel="energy")
-    p_p = plot(t, data[:,4:6], labels=["p_x" "p_y" "p_z"], xlabel="time", ylabel="momentum")
-    p_T = plot(t, data[:,7], legend=false, xlabel="time", ylabel="temperature")
-    p_P = plot(t, data[:,8], legend=false, xlabel="time", ylabel="pressure")
-    p_MSD = plot(t, data[:,9], legend=false, xlabel="time", ylabel="msd")
-    plot(p_H, p_p, p_T, p_P, p_MSD)
+    p_U = plot(t, data[:,2], xlabel="trials", ylabel="⟨U_potential⟩", legend=false)
+    p_P = plot(t, data[:,3], xlabel="trials", ylabel="⟨P⟩", legend=false)
+    plot(p_U, p_P)
 
+    println(mean(data, dims=1))
 end
 
 main()
