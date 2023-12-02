@@ -2,7 +2,7 @@ module MCMC
 include("Parameters.jl")
 using LinearAlgebra, Random, .Parameters
 
-export MCMCtrial!, U_system
+export MCMCtrial!, systemUandP
 
 # adjusts the positions using nearest-image to account for PBCs
 #
@@ -83,6 +83,7 @@ end
 # parameter - 🧛: number of particles
 # parameter - cut📏: cutoff radius
 # parameter - L: length of one edge of simulation box
+# returns: potential from the selected particle's interactions
 function Uparticle(📍s, i, 🧛, cut📏, L)
     U = 0
     for j = 1:🧛
@@ -93,38 +94,24 @@ function Uparticle(📍s, i, 🧛, cut📏, L)
     return U
 end
 
-# Computes total U_potential of system using LJ
+# Computes total U_potential and pressure from interactions of system using LJ
 #
 # parameter - 📍s: positions of all particles
 # parameter - 🧛: number of particles
 # parameter - cut📏: cutoff radius
 # parameter - L: length of one edge of simulation box
-function U_system(📍s, 🧛, cut📏, L)
-    U = 0
-    for i = 1:🧛
-        for j = i+1:🧛
-            U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
-        end
-    end
-    return U
-end
-
-# Computes LJ pressure and temperatures using current positions
-#
-# parameter - 📍s: positions of all particles
-# parameter - 🧛: number of particles
-# parameter - cut📏: cutoff radius
-# parameter - L: length of one edge of simulation box
-# returns: pressure as calculated from forces 
-function pressure(📍s, 🧛, cut📏, L)
-    P = 0;
+# return - U: total U_potential for the system
+# return - P: total pressure from interparticle interactions for the system
+function systemUandP(📍s, 🧛, cut📏, L)
+    U, P = 0, 0
     for i = 1:🧛           # for each particle
         for j = i+1:🧛     # for each particle that i interacts with
+            U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
             F = force_between_particles(📍s[i,:], 📍s[j,:], cut📏, L)
             P += pressure_between_particles(📍s[i,:], 📍s[j,:], L, F);
-        end 
+        end
     end
-    return P
+    return U, P / (3*L^3)
 end
 
 # Perturbs a single particle, and accepts the perturbation as appropriate.
@@ -136,12 +123,12 @@ end
 # parameter - cut📏: cutoff radius
 # parameter - L: length of one edge of simulation box
 # parameter - 🫨max: maximum perturbation in any dim
-# returns: energy of the new state
+# returns: whether this perturbation was accepted or rejected
 function 🫨1!(📍s, i, β, 🧛, cut📏, L, 🫨max)
     U = Uparticle(📍s, i, 🧛, cut📏, L)
-    🫨 = (rand(Float64, 3) .- 0.5) .* 🫨max;
-    📍s[i,:] += 🫨
-    📍s .+= L*((📍s .< 0) - (📍s .> L)) # PBC
+    🫨 = (rand(Float64, 3) .- 0.5) .* 🫨max;        # generate a perturbation
+    📍s[i,:] += 🫨                                  # apply it
+    📍s .+= L*((📍s .< 0) - (📍s .> L))             # PBC
     🫨U = Uparticle(📍s, i, 🧛, cut📏, L)
     # reject and revert the perturbation if U increases and stat check failed
     if 🫨U > U && (rand(Float64) > exp(-β*(🫨U-U)))
@@ -170,8 +157,8 @@ function MCMCtrial!(📍s, U, β, 🧛, cut📏, L, 🫨max)
         accept += 🫨1!(📍s, i, β, 🧛, cut📏, L, 🫨max)
     end
     V = L^3
-    P = 🧛 / (β*V) + pressure(📍s, 🧛, cut📏, L) / (3*V)
-    U = U_system(📍s, 🧛, cut📏, L)
+    U, Pints = systemUandP(📍s, 🧛, cut📏, L)
+    P = 🧛 / (β*V) + Pints
     return U, P, accept / 🧛
 end
 

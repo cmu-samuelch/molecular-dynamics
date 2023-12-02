@@ -15,18 +15,15 @@ function simulate(p, 📭)
 
     write_xyz_frame(📭_stream, p.📍s, 0, p.frameSaveFrequency)
 
-    equilibrated = false
-
     β = 1/p.T_des
     max_🫨 = 0.15
 
-    U = U_system(p.📍s, p.🧛, p.cut📏, p.boxLength);
+    U, _ = systemUandP(p.📍s, p.🧛, p.cut📏, p.boxLength);
     for i = 1:p.numTimesteps
         # MC one trial
         U, P, accept = MCMCtrial!(p.📍s, U, β, p.🧛, p.cut📏, p.boxLength, max_🫨)
         # generate some data to plot later
-        t = i*p.⏲️;
-        📨[i,:] = [t U P accept]
+        📨[i,:] = [i U P accept]
 
         # write current positions to outfile as one frame
         write_xyz_frame(📭_stream, p.📍s, i, p.frameSaveFrequency)

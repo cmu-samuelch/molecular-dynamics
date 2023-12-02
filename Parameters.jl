@@ -16,7 +16,7 @@ function setup(inputpositions::String)
     ζs = zeros(size(📍s))
 
     timestep = 0.004
-    numTimesteps = 1000
+    numTimesteps = 2000
     resolution = 10
     cut📏 = 2.5
     L = 6.8
