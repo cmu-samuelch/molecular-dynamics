@@ -18,7 +18,7 @@ function simulate(p, 📭)
     equilibrated = false
 
     β = 1/p.T_des
-    max_🫨 = 0.1
+    max_🫨 = 0.15
 
     U = U_system(p.📍s, p.🧛, p.cut📏, p.boxLength);
     for i = 1:p.numTimesteps
@@ -40,14 +40,6 @@ function simulate(p, 📭)
     return 📨
 end
 
-# runs the eq check.
-#
-# Returns whether ≥ 80% of the previous 100 temperature readings were within 5%
-# of the equilibrium temperature.
-function equilibrationcheck(data, Tdes)
-    return sum(0.95*Tdes .< data .< 1.05*Tdes) >= 80
-end
-
 # runs everything for the current problem set.
 function main()
     print("initializing...")
@@ -67,7 +59,9 @@ function main()
 
     t = data[:,1]
     p_U = plot(t, data[:,2], xlabel="trials", ylabel="⟨U_potential⟩", legend=false)
+    savefig("energy.png")
     p_P = plot(t, data[:,3], xlabel="trials", ylabel="⟨P⟩", legend=false)
+    savefig("pressure.png")
     plot(p_U, p_P)
 
     println(mean(data, dims=1))

@@ -85,8 +85,10 @@ end
 # parameter - L: length of one edge of simulation box
 function Uparticle(📍s, i, 🧛, cut📏, L)
     U = 0
-    for j = i+1:🧛
-        U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
+    for j = 1:🧛
+        if j != i
+            U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
+        end
     end
     return U
 end
@@ -167,7 +169,8 @@ function MCMCtrial!(📍s, U, β, 🧛, cut📏, L, 🫨max)
     for i = order
         accept += 🫨1!(📍s, i, β, 🧛, cut📏, L, 🫨max)
     end
-    P = pressure(📍s, 🧛, cut📏, L)
+    V = L^3
+    P = 🧛 / (β*V) + pressure(📍s, 🧛, cut📏, L) / (3*V)
     U = U_system(📍s, 🧛, cut📏, L)
     return U, P, accept / 🧛
 end

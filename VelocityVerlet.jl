@@ -94,7 +94,7 @@ function LJ_🤜s_and_energy!(🤜s, 📍s, 🧛, cut📏, L)
             🤜s[j,:] .-= F
             U += LJ_potential(📍s[i,:], 📍s[j,:], cut📏, L)
             P += pressure_between_particles(📍s[i,:], 📍s[j,:], L, F);
-        end 
+        end
     end
     return U, P
 end
